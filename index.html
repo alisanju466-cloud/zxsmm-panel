@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>SMM Panel</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>SMM Panel</h1>
+        <p id="welcome">Welcome</p>
+      </div>
+      <div class="tg-badge">TG</div>
+    </header>
+
+    <main>
+      <section class="balance-card">
+        <span>Available Balance</span>
+        <h2 id="balance">₹0.00</h2>
+      </section>
+
+      <section class="quick-grid">
+        <button onclick="showComingSoon('New Order')">🛒<b>New Order</b><small>Order a service</small></button>
+        <button onclick="showComingSoon('My Orders')">📦<b>My Orders</b><small>Track your orders</small></button>
+        <button onclick="showComingSoon('Add Funds')">💰<b>Add Funds</b><small>Top up balance</small></button>
+        <button onclick="showComingSoon('Profile')">👤<b>Profile</b><small>Account settings</small></button>
+      </section>
+
+      <section class="card">
+        <h3>Dashboard</h3>
+        <div class="stats">
+          <div><span>Orders</span><strong>0</strong></div>
+          <div><span>Spent</span><strong>₹0</strong></div>
+          <div><span>Active</span><strong>0</strong></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Welcome</h3>
+        <p class="muted">Your Telegram SMM panel is ready. Next we will connect Supabase, services, orders, wallet and the admin panel.</p>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
