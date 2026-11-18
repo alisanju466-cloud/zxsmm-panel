@@ -300,7 +300,217 @@ async function showOrders(){
   '</div>';
 }
 
-function selectService(id){toast("Service "+id+" selected — order form next.")}
+async function selectService(id){
+
+    const {data: service, error} = await db
+        .from("services")
+        .select("id,name,category,price")
+        .eq("id", id)
+        .maybeSingle();
+
+    if(error || !service){
+        toast("Service could not be loaded.");
+        return;
+    }
+
+    $("services").innerHTML = `
+        <div class="card">
+            <h3>🛒 New Order</h3>
+
+            <div class="status" style="margin-bottom:14px">
+                <b>${esc(service.name)}</b><br>
+                Price: ${money(service.price)} per 1000
+            </div>
+
+            <label style="display:block;margin-bottom:6px">
+                Link
+            </label>
+
+            <input
+                id="orderLink"
+                type="url"
+                placeholder="https://..."
+                style="
+                    width:100%;
+                    padding:14px;
+                    border-radius:10px;
+                    border:1px solid rgba(57,255,136,.35);
+                    background:#030704;
+                    color:#fff;
+                    outline:none;
+                    margin-bottom:14px;
+                "
+            >
+
+            <label style="display:block;margin-bottom:6px">
+                Quantity
+            </label>
+
+            <input
+                id="orderQuantity"
+                type="number"
+                min="1"
+                placeholder="1000"
+                style="
+                    width:100%;
+                    padding:14px;
+                    border-radius:10px;
+                    border:1px solid rgba(57,255,136,.35);
+                    background:#030704;
+                    color:#fff;
+                    outline:none;
+                    margin-bottom:14px;
+                "
+                oninput="updateOrderTotal(${Number(service.price)})"
+            >
+
+            <div
+                id="orderTotal"
+                class="status"
+                style="margin-bottom:14px"
+            >
+                Total: ₹0.00
+            </div>
+
+            <button
+                onclick="placeOrder(${service.id})"
+                style="
+                    width:100%;
+                    padding:15px;
+                    border:1px solid #39ff88;
+                    border-radius:12px;
+                    background:#061008;
+                    color:#39ff88;
+                    font-weight:bold;
+                    cursor:pointer;
+                    box-shadow:0 0 18px rgba(57,255,136,.3);
+                "
+            >
+                🚀 PLACE ORDER
+            </button>
+
+            <button
+                onclick="showServices()"
+                style="
+                    width:100%;
+                    margin-top:10px;
+                    padding:12px;
+                    border:1px solid rgba(57,255,136,.25);
+                    border-radius:12px;
+                    background:#030704;
+                    color:#fff;
+                    cursor:pointer;
+                "
+            >
+                ← Back to Services
+            </button>
+        </div>
+    `;
+}
+ function updateOrderTotal(pricePer1000)
+ async function placeOrder(serviceId){
+
+    if(!tgUser){
+        toast("Open this app inside Telegram.");
+        return;
+    }
+
+    const link = $("orderLink")?.value.trim();
+    const quantity = Number($("orderQuantity")?.value || 0);
+
+    if(!link){
+        toast("Enter the link.");
+        return;
+    }
+
+    if(!quantity || quantity < 1){
+        toast("Enter a valid quantity.");
+        return;
+    }
+
+    const {data: service, error: serviceError} = await db
+        .from("services")
+        .select("id,name,price")
+        .eq("id", serviceId)
+        .maybeSingle();
+
+    if(serviceError || !service){
+        toast("Service not found.");
+        return;
+    }
+
+    const total = (quantity / 1000) * Number(service.price);
+
+    const {data, error} = await db
+        .from("orders")
+        .insert([{
+            telegram_id: tgUser.id,
+            service_id: service.id,
+            service_name: service.name,
+            link: link,
+            quantity: quantity,
+            price: total,
+            status: "Pending"
+        }])
+        .select()
+        .single();
+
+    if(error){
+        console.error("Create order error:", error);
+
+        $("services").innerHTML = `
+            <div class="error">
+                <b>Order could not be created.</b><br>
+                ${esc(error.message)}
+            </div>
+        `;
+
+        return;
+    }
+
+    $("services").innerHTML = `
+        <div class="card">
+            <h3>✅ Order Submitted</h3>
+
+            <div class="status">
+                <b>Order #${esc(data.id)}</b><br><br>
+
+                Service: ${esc(service.name)}<br>
+                Quantity: ${quantity.toLocaleString()}<br>
+                Total: ${money(total)}<br>
+                Status: Pending
+            </div>
+
+            <button
+                onclick="showOrders()"
+                style="
+                    width:100%;
+                    margin-top:14px;
+                    padding:15px;
+                    border:1px solid #39ff88;
+                    border-radius:12px;
+                    background:#061008;
+                    color:#39ff88;
+                    font-weight:bold;
+                    cursor:pointer;
+                "
+            >
+                📦 View My Orders
+            </button>
+        </div>
+    `;
+
+    toast("Order created!");
+}
+ {
+
+    const quantity = Number($("orderQuantity")?.value || 0);
+
+    const total = (quantity / 1000) * pricePer1000;
+
+    $("orderTotal").textContent =
+        "Total: " + money(total);
+}
 function comingSoon(name){toast(name+" will be connected next.")}
 profile();
 showServices();
