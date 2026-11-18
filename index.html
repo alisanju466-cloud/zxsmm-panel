@@ -259,6 +259,104 @@ async function showServices(){
  $("services").innerHTML=data.map(s=>`<button class="service" onclick="selectService(${s.id})"><div><b>${esc(s.name)}</b><small>${esc(s.category||"General")}</small></div><strong>${money(s.price)}</strong></button>`).join("");
 }
 function selectService(id){toast("Service "+id+" selected — order form next.")}
+ async function showOrders(){
+
+    $("services").innerHTML = `
+        <div class="card">
+            <h3>📦 My Orders</h3>
+            <div class="status">Loading your orders...</div>
+        </div>
+    `;
+
+    if(!tgUser){
+        $("services").innerHTML = `
+            <div class="error">
+                Please open this app inside Telegram.
+            </div>
+        `;
+        return;
+    }
+
+    const { data, error } = await db
+        .from("orders")
+        .select("id,service_name,link,quantity,price,status,created_at")
+        .eq("telegram_id", tgUser.id)
+        .order("created_at", { ascending:false });
+
+    if(error){
+        console.error("Orders error:", error);
+
+        $("services").innerHTML = `
+            <div class="error">
+                <b>Could not load orders.</b><br>
+                ${esc(error.message)}
+            </div>
+        `;
+        return;
+    }
+
+    if(!data || data.length === 0){
+        $("services").innerHTML = `
+            <div class="card">
+                <h3>📦 My Orders</h3>
+                <div class="status">
+                    You don't have any orders yet.
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    $("services").innerHTML = `
+        <div class="card">
+            <h3>📦 My Orders</h3>
+
+            ${data.map(order => `
+                <div class="service" style="cursor:default;display:block">
+
+                    <div style="display:flex;justify-content:space-between;gap:10px">
+                        <b>Order #${order.id}</b>
+
+                        <strong style="
+                            color:${order.status === "Completed"
+                                ? "#39ff88"
+                                : order.status === "Cancelled"
+                                ? "#ff6b6b"
+                                : "#ffd166"};
+                        ">
+                            ${esc(order.status)}
+                        </strong>
+                    </div>
+
+                    <small>
+                        ${esc(order.service_name)}
+                    </small>
+
+                    <small>
+                        Quantity: ${Number(order.quantity).toLocaleString()}
+                    </small>
+
+                    <small>
+                        Price: ${money(order.price)}
+                    </small>
+
+                    <small style="
+                        display:block;
+                        margin-top:8px;
+                        word-break:break-all;
+                    ">
+                        ${esc(order.link)}
+                    </small>
+
+                    <small style="display:block;margin-top:8px">
+                        ${new Date(order.created_at).toLocaleString()}
+                    </small>
+
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
 function comingSoon(name){toast(name+" will be connected next.")}
 profile();
 showServices();
