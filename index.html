@@ -223,7 +223,7 @@ main{padding:18px}
 <section class="quick-grid">
 <button onclick="showServices()">🛒<b>New Order</b><small>Browse services</small></button>
 <button onclick="showOrders()">📦<b>My Orders</b><small>Track your orders</small></button>
-<button onclick="comingSoon('Add Funds')">💰<b>Add Funds</b><small>Top up balance</small></button>
+<button onclick="showAddFunds()">Add Funds</button>
 <button onclick="comingSoon('Profile')">👤<b>Profile</b><small>Account settings</small></button>
 </section>
 <section class="card"><h3>Services</h3><div id="services"><div class="status">Loading services from Supabase...</div></div></section>
@@ -387,6 +387,62 @@ async function showOrders(){
   '</div>';
 }
 function comingSoon(name){toast(name+" will be connected next.")}
+ function showAddFunds() {
+    $("services").innerHTML = `
+        <div class="order-form">
+
+            <h2>Add Funds</h2>
+
+            <p class="muted">
+                Add money to your ZXSMM balance.
+            </p>
+
+            <label>Enter Amount</label>
+
+            <input
+                id="fundAmount"
+                type="number"
+                min="10"
+                step="1"
+                placeholder="Enter amount"
+            >
+
+            <div class="quick-amounts">
+                <button onclick="setFundAmount(100)">₹100</button>
+                <button onclick="setFundAmount(250)">₹250</button>
+                <button onclick="setFundAmount(500)">₹500</button>
+                <button onclick="setFundAmount(1000)">₹1000</button>
+            </div>
+
+            <button class="place-order-btn" onclick="startPayment()">
+                CONTINUE TO PAYMENT
+            </button>
+
+            <button class="back-btn" onclick="showServices()">
+                ← Back
+            </button>
+
+        </div>
+    `;
+}
+
+function setFundAmount(amount) {
+    const input = $("fundAmount");
+    if (input) {
+        input.value = amount;
+    }
+}
+
+function startPayment() {
+    const amount = Number($("fundAmount")?.value || 0);
+
+    if (amount < 10) {
+        toast("Minimum amount is ₹10");
+        return;
+    }
+
+    toast("Payment gateway will be connected next.");
+}
 profile();
 showServices();
 </script>
