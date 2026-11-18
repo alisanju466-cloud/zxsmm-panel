@@ -1,6 +1,175 @@
 <!doctype html>
 <html lang="en">
 <head>
+ <style>
+/* =========================
+   NEON PARTICLE BACKGROUND
+========================= */
+
+#particle-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    background: #050805;
+}
+
+body {
+    background: #050805 !important;
+    position: relative;
+}
+
+/* Keep website content above particles */
+body > *:not(#particle-bg) {
+    position: relative;
+    z-index: 1;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const canvas = document.createElement("canvas");
+    canvas.id = "particle-bg";
+    document.body.prepend(canvas);
+
+    const ctx = canvas.getContext("2d");
+
+    let particles = [];
+    let mouse = {
+        x: null,
+        y: null,
+        radius: 120
+    };
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        createParticles();
+    }
+
+    function createParticles() {
+        particles = [];
+
+        const count = Math.min(
+            90,
+            Math.max(35, Math.floor(window.innerWidth / 15))
+        );
+
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2.2 + 0.5,
+                speedX: (Math.random() - 0.5) * 0.35,
+                speedY: (Math.random() - 0.5) * 0.35,
+                opacity: Math.random() * 0.6 + 0.2
+            });
+        }
+    }
+
+    function drawParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < particles.length; i++) {
+
+            const p = particles[i];
+
+            p.x += p.speedX;
+            p.y += p.speedY;
+
+            if (p.x < 0 || p.x > canvas.width) {
+                p.speedX *= -1;
+            }
+
+            if (p.y < 0 || p.y > canvas.height) {
+                p.speedY *= -1;
+            }
+
+            /* Mouse interaction */
+            if (mouse.x !== null && mouse.y !== null) {
+                const dx = mouse.x - p.x;
+                const dy = mouse.y - p.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < mouse.radius) {
+                    const force = (mouse.radius - distance) / mouse.radius;
+
+                    p.x -= dx * force * 0.012;
+                    p.y -= dy * force * 0.012;
+                }
+            }
+
+            /* Glow */
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+
+            ctx.fillStyle =
+                "rgba(0, 255, 100, " + p.opacity + ")";
+
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "rgba(0, 255, 100, 0.8)";
+
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+        }
+
+        /* Connecting lines */
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 120) {
+
+                    const opacity =
+                        (1 - distance / 120) * 0.15;
+
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        particles[i].x,
+                        particles[i].y
+                    );
+
+                    ctx.lineTo(
+                        particles[j].x,
+                        particles[j].y
+                    );
+
+                    ctx.strokeStyle =
+                        "rgba(0, 255, 100, " + opacity + ")";
+
+                    ctx.lineWidth = 0.6;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        requestAnimationFrame(drawParticles);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+
+    window.addEventListener("mousemove", function (event) {
+        mouse.x = event.clientX;
+        mouse.y = event.clientY;
+    });
+
+    window.addEventListener("mouseleave", function () {
+        mouse.x = null;
+        mouse.y = null;
+    });
+
+    resizeCanvas();
+    drawParticles();
+});
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#020402">
