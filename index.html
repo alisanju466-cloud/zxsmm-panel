@@ -224,7 +224,7 @@ main{padding:18px}
 <button onclick="showServices()">🛒<b>New Order</b><small>Browse services</small></button>
 <button onclick="showOrders()">📦<b>My Orders</b><small>Track your orders</small></button>
 <button onclick="showAddFunds()">💰<b>Add Funds</b><small>Top up balance</small></button>
-<button onclick="comingSoon('Profile')">👤<b>Profile</b><small>Account settings</small></button>
+<button onclick="showProfile()">👤<b>Profile</b><small>Account settings</small></button>
 </section>
 <section class="card"><h3>Services</h3><div id="services"><div class="status">Loading services from Supabase...</div></div></section>
 </main>
@@ -471,6 +471,125 @@ async function submitFundRequest(amount){
     toast("Could not submit: " + (error.message || "Unknown error"));
     if(btn){ btn.disabled = false; btn.textContent = "I HAVE PAID — SUBMIT UTR"; }
   }
+}
+
+async function showProfile(){
+  const box = $("services");
+  box.innerHTML = '<div class="status">Loading your profile...</div>';
+
+  if(!tgUser){
+    box.innerHTML = `
+      <div class="card">
+        <h3>👤 My Profile</h3>
+        <div class="error">Please open this panel inside Telegram to view your account profile.</div>
+        <button onclick="showServices()" style="width:100%;margin-top:14px;padding:13px;border:1px solid var(--green);border-radius:12px;background:#061008;color:var(--green);font-weight:bold">← Back</button>
+      </div>`;
+    return;
+  }
+
+  const {data,error} = await db
+    .from("profiles")
+    .select("telegram_id,username,first_name,last_name,balance,created_at")
+    .eq("telegram_id",tgUser.id)
+    .maybeSingle();
+
+  if(error){
+    console.error("Profile load error:",error);
+    box.innerHTML = `
+      <div class="card">
+        <h3>👤 My Profile</h3>
+        <div class="error">Could not load saved profile: ${esc(error.message)}</div>
+        <button onclick="showProfile()" style="width:100%;margin-top:12px;padding:13px;border:1px solid var(--green);border-radius:12px;background:#061008;color:var(--green);font-weight:bold">Try Again</button>
+        <button onclick="showServices()" style="width:100%;margin-top:8px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#030704;color:#fff">← Back</button>
+      </div>`;
+    return;
+  }
+
+  const firstName = data?.first_name || tgUser.first_name || "Telegram";
+  const lastName = data?.last_name || tgUser.last_name || "User";
+  const username = data?.username || tgUser.username || "Not set";
+  const balance = data?.balance ?? 0;
+  const joined = data?.created_at ? new Date(data.created_at).toLocaleDateString() : "Not available";
+  const initials = (firstName.charAt(0) + (lastName !== "User" ? lastName.charAt(0) : "")).toUpperCase();
+
+  box.innerHTML = `
+    <div class="card">
+      <h3>👤 My Profile</h3>
+      <div style="display:flex;align-items:center;gap:14px;padding:16px;border:1px solid var(--border);border-radius:14px;background:#030704;margin-bottom:14px">
+        <div style="width:58px;height:58px;flex:0 0 58px;border-radius:50%;display:grid;place-items:center;background:#092313;border:1px solid var(--green);color:var(--green);font-size:22px;font-weight:bold;box-shadow:0 0 14px rgba(57,255,136,.25)">${esc(initials || "U")}</div>
+        <div style="min-width:0"><b style="font-size:18px">${esc(firstName)} ${esc(lastName)}</b><div class="muted" style="margin-top:5px">@${esc(username === "Not set" ? "username-not-set" : username)}</div></div>
+      </div>
+      <div class="status" style="line-height:2.1">
+        <div><span class="muted">Telegram ID</span><br><b>${esc(data?.telegram_id ?? tgUser.id)}</b></div>
+        <div><span class="muted">Username</span><br><b>${esc(username === "Not set" ? "Not set" : "@" + username)}</b></div>
+        <div><span class="muted">Available Balance</span><br><b style="color:var(--green);font-size:21px">${money(balance)}</b></div>
+        <div><span class="muted">Account Created</span><br><b>${esc(joined)}</b></div>
+      </div>
+      <button onclick="showDepositHistory()" style="width:100%;margin-top:14px;padding:13px;border:1px solid var(--green);border-radius:12px;background:#061008;color:var(--green);font-weight:bold;cursor:pointer">💳 Deposit History</button>
+      <button onclick="showOrders()" style="width:100%;margin-top:9px;padding:13px;border:1px solid var(--border);border-radius:12px;background:#030704;color:#fff;cursor:pointer">📦 Order History</button>
+      <button onclick="openCustomerSupport()" style="width:100%;margin-top:9px;padding:13px;border:1px solid var(--border);border-radius:12px;background:#030704;color:#fff;cursor:pointer">🎧 Customer Support</button>
+      <button onclick="profile();showProfile()" style="width:100%;margin-top:9px;padding:13px;border:1px solid var(--green);border-radius:12px;background:#061008;color:var(--green);font-weight:bold;cursor:pointer">↻ Refresh Profile</button>
+      <button onclick="showServices()" style="width:100%;margin-top:9px;padding:12px;border:1px solid var(--border);border-radius:12px;background:#030704;color:#fff;cursor:pointer">← Back to Panel</button>
+    </div>`;
+}
+
+
+/* =========================
+   PROFILE: DEPOSIT HISTORY
+   Uses fund_requests so Pending and Approved requests are visible.
+========================= */
+async function showDepositHistory(){
+  const box = $("services");
+  box.innerHTML = '<div class="status">Loading deposit history...</div>';
+
+  if(!tgUser){
+    box.innerHTML = '<div class="card"><h3>💳 Deposit History</h3><div class="error">Open this panel inside Telegram to view your deposits.</div><button class="service" onclick="showProfile()">← Back to Profile</button></div>';
+    return;
+  }
+
+  const {data,error} = await db.from("fund_requests")
+    .select("id,amount,utr,status,created_at")
+    .eq("telegram_id",tgUser.id)
+    .order("created_at",{ascending:false});
+
+  if(error){
+    console.error("Deposit history error:",error);
+    box.innerHTML = `<div class="card"><h3>💳 Deposit History</h3><div class="error">Could not load deposit history: ${esc(error.message)}<br><br>Check the fund_requests SELECT permissions and policy in Supabase.</div><button class="service" onclick="showProfile()">← Back to Profile</button></div>`;
+    return;
+  }
+
+  if(!data || !data.length){
+    box.innerHTML = '<div class="card"><h3>💳 Deposit History</h3><div class="status">No deposit requests yet.</div><button class="service" onclick="showProfile()">← Back to Profile</button></div>';
+    return;
+  }
+
+  box.innerHTML = `
+    <div class="card">
+      <h3>💳 Deposit History</h3>
+      ${data.map(d=>`
+        <div class="service" style="display:block;cursor:default">
+          <div style="display:flex;justify-content:space-between;gap:10px">
+            <b>Deposit #${esc(d.id)}</b>
+            <strong>${esc(d.status || "Pending")}</strong>
+          </div>
+          <div style="margin-top:8px;color:var(--green);font-weight:bold">${money(d.amount)}</div>
+          <small>UTR: ${esc(d.utr || "Not submitted")}</small>
+          <small style="display:block;margin-top:6px">${d.created_at ? new Date(d.created_at).toLocaleString() : ""}</small>
+        </div>
+      `).join("")}
+      <button class="service" onclick="showProfile()">← Back to Profile</button>
+    </div>`;
+}
+
+/* Replace this with your real Telegram support username, without @. */
+const CUSTOMER_SUPPORT_USERNAME = "YourSupportUsername";
+
+function openCustomerSupport(){
+  if(!CUSTOMER_SUPPORT_USERNAME || CUSTOMER_SUPPORT_USERNAME === "YourSupportUsername"){
+    toast("Add your support Telegram username in index.html first.");
+    return;
+  }
+  window.open("https://t.me/" + encodeURIComponent(CUSTOMER_SUPPORT_USERNAME), "_blank");
 }
 
 function comingSoon(name){toast(name+" will be connected next.")}
