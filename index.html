@@ -459,11 +459,10 @@ function startPayment() {
 
             <p><b>UPI ID:</b> ${PAYMENT_UPI_ID}</p>
 
-            <button class="place-order-btn"
-                onclick="GenUI.openUrl('${upiLink.replace(/'/g, "%27")}')">
-                OPEN UPI APP
-            </button>
-
+           <a href="${upiLink}" class="place-order-btn"
+   style="display:block;text-align:center;text-decoration:none">
+   OPEN UPI APP
+</a>
             <p>After paying, enter your 12-digit UTR/reference number.</p>
 
             <input id="fundUTR"
