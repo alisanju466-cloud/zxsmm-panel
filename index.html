@@ -387,25 +387,20 @@ async function showOrders(){
   '</div>';
 }
 function comingSoon(name){toast(name+" will be connected next.")}
- function showAddFunds() {
+ const PAYMENT_UPI_ID = "sanjuxrich@fam";
+const PAYMENT_NAME = "ZXSMM Panel";
+
+function showAddFunds() {
     $("services").innerHTML = `
         <div class="order-form">
-
             <h2>Add Funds</h2>
+            <p>Choose how much you want to add to your wallet.</p>
 
-            <p class="muted">
-                Add money to your ZXSMM balance.
-            </p>
-
-            <label>Enter Amount</label>
-
-            <input
-                id="fundAmount"
+            <input id="fundAmount"
                 type="number"
                 min="10"
                 step="1"
-                placeholder="Enter amount"
-            >
+                placeholder="Enter amount (minimum ₹10)">
 
             <div class="quick-amounts">
                 <button onclick="setFundAmount(100)">₹100</button>
@@ -415,27 +410,126 @@ function comingSoon(name){toast(name+" will be connected next.")}
             </div>
 
             <button class="place-order-btn" onclick="startPayment()">
-                CONTINUE TO PAYMENT
+                CONTINUE
             </button>
 
             <button class="back-btn" onclick="showServices()">
                 ← Back
             </button>
-
         </div>
     `;
 }
 
 function setFundAmount(amount) {
-    const input = $("fundAmount");
-    if (input) {
-        input.value = amount;
-    }
+    $("fundAmount").value = amount;
 }
 
 function startPayment() {
     const amount = Number($("fundAmount")?.value || 0);
 
+    if (!tgUser) {
+        toast("Please open the app inside Telegram.");
+        return;
+    }
+
+    if (!Number.isFinite(amount) || amount < 10 || amount > 100000) {
+        toast("Enter an amount between ₹10 and ₹1,00,000.");
+        return;
+    }
+
+    const upiLink =
+        "upi://pay?pa=" + encodeURIComponent(PAYMENT_UPI_ID) +
+        "&pn=" + encodeURIComponent(PAYMENT_NAME) +
+        "&am=" + encodeURIComponent(amount.toFixed(2)) +
+        "&cu=INR" +
+        "&tn=" + encodeURIComponent("ZXSMM wallet deposit");
+
+    const qrUrl =
+        "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" +
+        encodeURIComponent(upiLink);
+
+    $("services").innerHTML = `
+        <div class="order-form">
+            <h2>Pay ₹${amount.toFixed(2)}</h2>
+            <p>Scan this QR code using your UPI app.</p>
+
+            <img src="${qrUrl}"
+                alt="UPI payment QR code"
+                style="width:230px;max-width:100%;display:block;margin:20px auto;">
+
+            <p><b>UPI ID:</b> ${PAYMENT_UPI_ID}</p>
+
+            <button class="place-order-btn"
+                onclick="GenUI.openUrl('${upiLink.replace(/'/g, "%27")}')">
+                OPEN UPI APP
+            </button>
+
+            <p>After paying, enter your 12-digit UTR/reference number.</p>
+
+            <input id="fundUTR"
+                type="text"
+                maxlength="30"
+                placeholder="Enter UTR / transaction reference">
+
+            <button class="place-order-btn"
+                onclick="submitFundRequest(${amount})">
+                I HAVE PAID — SUBMIT UTR
+            </button>
+
+            <button class="back-btn" onclick="showAddFunds()">
+                ← Back
+            </button>
+        </div>
+    `;
+}
+
+async function submitFundRequest(amount) {
+    if (!tgUser) {
+        toast("Open this app inside Telegram.");
+        return;
+    }
+
+    const utr = $("fundUTR")?.value.trim();
+
+    if (!utr || !/^[a-zA-Z0-9]{8,30}$/.test(utr)) {
+        toast("Enter a valid UTR/reference number.");
+        return;
+    }
+
+    const button = document.querySelector(
+        "#services button[onclick^='submitFundRequest']"
+    );
+
+    if (button) button.disabled = true;
+
+    const { error } = await db
+        .from("fund_requests")
+        .insert([{
+            telegram_id: tgUser.id,
+            amount: amount,
+            utr: utr,
+            status: "Pending"
+        }]);
+
+    if (error) {
+        console.error(error);
+        toast("Could not submit request: " + error.message);
+        if (button) button.disabled = false;
+        return;
+    }
+
+    $("services").innerHTML = `
+        <div class="order-form">
+            <h2>Payment Submitted</h2>
+            <p>Your request for ₹${amount.toFixed(2)} is pending verification.</p>
+            <p><b>UTR:</b> ${esc(utr)}</p>
+            <p>Your wallet will be credited after admin approval.</p>
+            <button class="back-btn" onclick="showServices()">
+                Back to Services
+            </button>
+        </div>
+    `;
+}
     if (amount < 10) {
         toast("Minimum amount is ₹10");
         return;
